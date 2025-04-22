@@ -1,39 +1,32 @@
 package com.example.sms.dto.request;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Email;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class StudentRequest {
-    @NotBlank(message = "Username is required")
+    @NotBlank
     private String username;
     
+    @NotBlank
     private String password;
     
-    @NotBlank(message = "Name is required")
+    @NotBlank
     private String name;
     
-    @NotBlank(message = "Roll number is required")
+    @NotBlank
     private String rollNumber;
     
-    @NotBlank(message = "Email is required")
-    @Email(message = "Email should be valid")
+    @Email
     private String email;
     
     private String phone;
     
-    @NotBlank(message = "Course ID is required")
+    @NotBlank
     private String courseId;
     
-    @NotNull(message = "Year is required")
-    private int year;
+    private Integer year;
     
     private String address;
 }

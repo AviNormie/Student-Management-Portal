@@ -8,6 +8,7 @@ import com.example.sms.repository.CourseRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -70,7 +71,7 @@ public class CourseService {
                 course.getName(),
                 course.getCode(),
                 course.getDescription(),
-                course.getSubjects(),
+                Arrays.asList(course.getSubjects()),  // Convert String[] to List<String>
                 course.getDuration()
         );
     }
