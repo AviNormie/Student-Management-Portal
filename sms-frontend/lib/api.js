@@ -121,3 +121,12 @@ export const getAllCourses = async () => {
     throw error.response?.data || { message: 'Failed to fetch courses' };
   }
 };
+
+export async function createCourse(courseData) {
+  try {
+    const response = await api.post('/courses', courseData);
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to create course');
+  }
+}
