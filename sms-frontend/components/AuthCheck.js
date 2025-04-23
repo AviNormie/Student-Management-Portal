@@ -14,22 +14,16 @@ export default function AuthCheck({ requiredRole, children }) {
       return;
     }
 
-    // Check if user has the required role
-    const userRole = getRole();
-    if (requiredRole && userRole !== requiredRole) {
-      // Redirect based on user role
-      switch (userRole) {
-        case 'admin':
-          router.push('/admin/dashboard');
-          break;
-        case 'teacher':
-          router.push('/teacher/dashboard');
-          break;
-        case 'student':
-          router.push('/student/dashboard');
-          break;
-        default:
-          router.push('/login');
+    // Only check role if requiredRole is provided
+    if (requiredRole) {
+      const userRole = getRole();
+      console.log('AuthCheck - Comparing roles:', { userRole, requiredRole });
+      
+      // Convert both roles to uppercase for comparison
+      if (userRole.toUpperCase() !== requiredRole.toUpperCase()) {
+        console.log('AuthCheck - Role mismatch, redirecting to login');
+        router.push('/login');
+        return;
       }
     }
   }, [router, requiredRole]);

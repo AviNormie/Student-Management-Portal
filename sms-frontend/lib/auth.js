@@ -1,48 +1,84 @@
+import { useAuthStore } from './store';
+
 export const saveUserData = (userData) => {
-    if (typeof window !== 'undefined') {
+  console.log('saveUserData - Saving user data:', userData);
+  
+  // Update Zustand store
+  useAuthStore.getState().setUser(userData);
+  
+  // Optionally keep localStorage as backup
+  if (typeof window !== 'undefined') {
+    try {
       localStorage.setItem('user', JSON.stringify(userData));
-      localStorage.setItem('role', userData.role);
-      localStorage.setItem('username', userData.username);
-      localStorage.setItem('isLoggedIn', 'true');
+    } catch (error) {
+      console.error('Error saving user data to localStorage:', error);
     }
-  };
+  }
+};
+
+export const getUserData = () => {
+  // Get from Zustand store
+  const userData = useAuthStore.getState().user;
+  console.log('getUserData - From store:', userData);
+  return userData;
+};
+
+export const getRole = () => {
+  // Get from Zustand store
+  const role = useAuthStore.getState().role;
+  console.log('getRole - From store:', role);
+  return role;
+};
+
+export const getUsername = () => {
+  // Get from Zustand store
+  const username = useAuthStore.getState().username;
+  console.log('getUsername - From store:', username);
+  return username;
+};
+
+export const isAuthenticated = () => {
+  // Check auth status from Zustand store
+  const isLoggedIn = useAuthStore.getState().isLoggedIn;
+  const hasUserData = !!useAuthStore.getState().user;
+  const result = isLoggedIn && hasUserData;
   
-  export const getUserData = () => {
-    if (typeof window !== 'undefined') {
-      const userStr = localStorage.getItem('user');
-      if (userStr) {
-        return JSON.parse(userStr);
-      }
-    }
-    return null;
-  };
+  console.log('isAuthenticated - Check details:', {
+    isLoggedInFlag: isLoggedIn,
+    hasUserData: hasUserData,
+    finalResult: result
+  });
   
-  export const getRole = () => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('role');
-    }
-    return null;
-  };
+  return result;
+};
+
+export const logout = () => {
+  console.log('logout - Removing user data from store');
   
-  export const getUsername = () => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('username');
-    }
-    return null;
-  };
+  // Clear Zustand store
+  useAuthStore.getState().logout();
   
-  export const isAuthenticated = () => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('isLoggedIn') === 'true';
-    }
-    return false;
-  };
-  
-  export const logout = () => {
-    if (typeof window !== 'undefined') {
+  // Optionally clear localStorage as well
+  if (typeof window !== 'undefined') {
+    try {
       localStorage.removeItem('user');
       localStorage.removeItem('role');
       localStorage.removeItem('username');
       localStorage.removeItem('isLoggedIn');
+    } catch (error) {
+      console.error('Error during logout:', error);
     }
+  }
+};
+
+// Add a hook for components to access auth state
+export const useAuth = () => {
+  const { user, role, username, isLoggedIn } = useAuthStore();
+  return {
+    user,
+    role,
+    username,
+    isLoggedIn,
+    isAuthenticated: isLoggedIn && !!user
   };
+};

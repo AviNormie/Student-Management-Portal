@@ -1,106 +1,153 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getStudentByUserId, getAllCourses } from '@/lib/api';
-import { getUserData } from '@/lib/auth';
+import { getStudentByUserId, getStudentAttendance, getStudentMarks } from '@/lib/api';
+import { useRouter } from 'next/navigation';
 
-export default function StudentProfilePage() {
-  const [studentData, setStudentData] = useState(null);
-  const [course, setCourse] = useState(null);
+export default function StudentProfile() {
+  const [student, setStudent] = useState(null);
+  const [attendance, setAttendance] = useState([]);
+  const [marks, setMarks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const userData = getUserData();
+  const router = useRouter();
 
   useEffect(() => {
-    const fetchStudentData = async () => {
-      if (!userData || !userData.id) {
-        setError('User data not found');
-        setLoading(false);
-        return;
-      }
+    // Get user from localStorage
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user) {
+      router.push('/login');
+      return;
+    }
 
+    const fetchData = async () => {
       try {
-        setLoading(true);
+        // Fetch student data
+        const studentData = await getStudentByUserId(user.id);
+        setStudent(studentData);
+
+        // Only fetch attendance and marks if we have student data
+        if (studentData && studentData.id) {
+          try {
+            const attendanceData = await getStudentAttendance(studentData.id);
+            setAttendance(attendanceData);
+          } catch (err) {
+            console.error('Error fetching attendance:', err);
+            // Don't set error state to prevent UI disruption
+          }
+
+          try {
+            const marksData = await getStudentMarks(studentData.id);
+            setMarks(marksData);
+          } catch (err) {
+            console.error('Error fetching marks:', err);
+            // Don't set error state to prevent UI disruption
+          }
+        }
         
-        // Get student data
-        const student = await getStudentByUserId(userData.id);
-        setStudentData(student);
-        
-        // Get course data
-        const courses = await getAllCourses();
-        const studentCourse = courses.find(c => c.id === student.courseId);
-        setCourse(studentCourse);
-        
+        setLoading(false);
       } catch (err) {
         console.error('Error fetching student data:', err);
-        setError('Failed to load student data');
-      } finally {
+        setError('Failed to load student profile');
         setLoading(false);
       }
     };
 
-    fetchStudentData();
-  }, [userData]);
+    fetchData();
+  }, [router]); // Only run once on component mount
 
   if (loading) {
-    return <div className="text-center py-10">Loading profile data...</div>;
+    return <div className="text-center p-8">Loading student profile...</div>;
   }
 
   if (error) {
-    return (
-      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-        {error}
-      </div>
-    );
+    return <div className="text-center p-8 text-red-500">{error}</div>;
+  }
+
+  if (!student) {
+    return <div className="text-center p-8">No student data found</div>;
   }
 
   return (
-    <div>
+    <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-6">Student Profile</h1>
       
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-        <div className="px-4 py-5 sm:px-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">Personal Information</h3>
-          <p className="mt-1 max-w-2xl text-sm text-gray-500">Student details and academic information.</p>
+      <div className="bg-white shadow-md rounded p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-4">Personal Information</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <p><span className="font-medium">Name:</span> {student.name}</p>
+            <p><span className="font-medium">Roll Number:</span> {student.rollNumber}</p>
+            <p><span className="font-medium">Email:</span> {student.email}</p>
+          </div>
+          <div>
+            <p><span className="font-medium">Phone:</span> {student.phone || 'N/A'}</p>
+            <p><span className="font-medium">Year:</span> {student.year}</p>
+            <p><span className="font-medium">Address:</span> {student.address || 'N/A'}</p>
+          </div>
         </div>
-        <div className="border-t border-gray-200">
-          <dl>
-            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Full name</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{studentData?.name}</dd>
-            </div>
-            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Username</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{studentData?.username}</dd>
-            </div>
-            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Roll Number</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{studentData?.rollNumber}</dd>
-            </div>
-            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Email address</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{studentData?.email}</dd>
-            </div>
-            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Phone</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{studentData?.phone || 'N/A'}</dd>
-            </div>
-            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Course</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{course?.name || 'N/A'}</dd>
-            </div>
-            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Year</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{studentData?.year}</dd>
-            </div>
-            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">Address</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                {studentData?.address || 'N/A'}
-              </dd>
-            </div>
-          </dl>
-        </div>
+      </div>
+
+      {/* Attendance Section */}
+      <div className="bg-white shadow-md rounded p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-4">Attendance</h2>
+        {attendance.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full bg-white">
+              <thead>
+                <tr>
+                  <th className="py-2 px-4 border-b">Date</th>
+                  <th className="py-2 px-4 border-b">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {attendance.map((record, index) => (
+                  <tr key={index}>
+                    <td className="py-2 px-4 border-b">{new Date(record.date).toLocaleDateString()}</td>
+                    <td className="py-2 px-4 border-b">{record.status}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p>No attendance records found</p>
+        )}
+      </div>
+
+      {/* Marks Section */}
+      <div className="bg-white shadow-md rounded p-6">
+        <h2 className="text-xl font-semibold mb-4">Academic Performance</h2>
+        {marks.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full bg-white">
+              <thead>
+                <tr>
+                  <th className="py-2 px-4 border-b">Subject</th>
+                  <th className="py-2 px-4 border-b">Exam Type</th>
+                  <th className="py-2 px-4 border-b">Marks</th>
+                  <th className="py-2 px-4 border-b">Total</th>
+                  <th className="py-2 px-4 border-b">Percentage</th>
+                </tr>
+              </thead>
+              <tbody>
+                {marks.map((mark, index) => (
+                  <tr key={index}>
+                    <td className="py-2 px-4 border-b">{mark.subject}</td>
+                    <td className="py-2 px-4 border-b">{mark.examType}</td>
+                    <td className="py-2 px-4 border-b">{mark.marks}</td>
+                    <td className="py-2 px-4 border-b">{mark.totalMarks}</td>
+                    <td className="py-2 px-4 border-b">
+                      {((mark.marks / mark.totalMarks) * 100).toFixed(2)}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p>No marks records found</p>
+        )}
       </div>
     </div>
   );

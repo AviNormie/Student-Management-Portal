@@ -12,10 +12,26 @@ const api = axios.create({
 // Auth APIs
 export const loginUser = async (username, password, role) => {
   try {
-    const response = await api.post('/auth/login', { username, password, role });
+    console.log(`Sending login request to: ${API_URL}/auth/login`);
+    console.log('Login payload:', { username, password, role });
+    
+    const response = await api.post('/auth/login', { 
+      username, 
+      password, 
+      role: role.toUpperCase() // Ensure role is uppercase to match backend expectations
+    });
+    
+    console.log('Login API response status:', response.status);
+    console.log('Login API response headers:', response.headers);
+    console.log('Login API response data:', response.data);
+    
     return response.data;
   } catch (error) {
-    throw error.response?.data || { message: 'Login failed' };
+    console.error("Login failed details:", error);
+    console.error("Error response:", error.response);
+    console.error("Error status:", error.response?.status);
+    console.error("Error data:", error.response?.data);
+    throw error.response?.data || { message: 'Login failed. Server may be unavailable.' };
   }
 };
 
@@ -130,3 +146,13 @@ export async function createCourse(courseData) {
     throw new Error(error.response?.data?.message || 'Failed to create course');
   }
 }
+
+// Admin APIs
+export const createAdmin = async (adminData) => {
+  try {
+    const response = await api.post('/auth/register/admin', adminData);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to create admin user' };
+  }
+};

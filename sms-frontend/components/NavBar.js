@@ -2,12 +2,11 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getUsername, getRole, logout } from '@/lib/auth';
+import { useAuth, logout } from '@/lib/auth';
 
 export default function NavBar() {
   const router = useRouter();
-  const username = getUsername();
-  const role = getRole();
+  const { isAuthenticated, role, username } = useAuth();
 
   const handleLogout = () => {
     logout();
