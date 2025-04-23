@@ -5,16 +5,20 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class AttendanceResponse {
+public class ClassResponse {
     private String id;
-    private String studentId;
     private String courseId;
-    private String classId;
+    private String teacherId;
+    private String subject;
+    private String title;
+    private String description;
     private LocalDate date;
-    private boolean present;
-    private String remarks;
+    private LocalTime startTime;
+    private LocalTime endTime;
+    private String roomNumber;
 }

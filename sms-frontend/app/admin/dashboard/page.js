@@ -17,6 +17,11 @@ export default function AdminDashboard() {
           link="/admin/students" 
         />
         <DashboardCard 
+          title="Teachers" 
+          description="Manage teacher accounts" 
+          link="/admin/teachers" 
+        />
+        <DashboardCard 
           title="Courses" 
           description="Manage course offerings" 
           link="/admin/courses" 

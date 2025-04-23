@@ -9,6 +9,20 @@ const api = axios.create({
   }
 });
 
+// Add a request interceptor to include the auth token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 // Auth APIs
 export const loginUser = async (username, password, role) => {
   try {
@@ -109,6 +123,54 @@ export const markAttendance = async (attendanceData) => {
   }
 };
 
+export const getCourseAttendance = async (courseId, date) => {
+  try {
+    const response = await api.get(`/attendance/course/${courseId}/date`, {
+      params: { date }
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to fetch course attendance' };
+  }
+};
+
+export const getClassAttendance = async (classId) => {
+  try {
+    const response = await api.get(`/attendance/class/${classId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to fetch class attendance' };
+  }
+};
+
+// Class APIs
+export const createClass = async (classData) => {
+  try {
+    const response = await api.post('/classes', classData);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to create class' };
+  }
+};
+
+export const getClassesByCourse = async (courseId) => {
+  try {
+    const response = await api.get(`/classes/course/${courseId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to fetch classes for course' };
+  }
+};
+
+export const getClassById = async (classId) => {
+  try {
+    const response = await api.get(`/classes/${classId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to fetch class' };
+  }
+};
+
 // Marks APIs
 export const getStudentMarks = async (studentId) => {
   try {
@@ -154,5 +216,14 @@ export const createAdmin = async (adminData) => {
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: 'Failed to create admin user' };
+  }
+};
+
+export const createTeacher = async (teacherData) => {
+  try {
+    const response = await api.post('/teachers', teacherData);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to create teacher' };
   }
 };

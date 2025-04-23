@@ -5,149 +5,109 @@
 import { useState, useEffect } from 'react';
 import { getStudentByUserId, getStudentMarks } from '@/lib/api';
 import { getUserData } from '@/lib/auth';
+import AuthCheck from '@/components/AuthCheck';
 
 export default function StudentMarksPage() {
-  const [studentData, setStudentData] = useState(null);
+  const [student, setStudent] = useState(null);
   const [marks, setMarks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const userData = getUserData();
 
   useEffect(() => {
-    const fetchMarksData = async () => {
-      if (!userData || !userData.id) {
-        setError('User data not found');
-        setLoading(false);
-        return;
-      }
+    fetchStudentData();
+  }, []);
 
-      try {
-        setLoading(true);
-        
-        // Get student data
-        const student = await getStudentByUserId(userData.id);
-        setStudentData(student);
-        
-        // Get marks data
-        const marksData = await getStudentMarks(student.id);
-        setMarks(marksData);
-        
-      } catch (err) {
-        console.error('Error fetching marks data:', err);
-        setError('Failed to load marks data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMarksData();
-  }, [userData]);
-
-  if (loading) {
-    return <div className="text-center py-10">Loading marks data...</div>;
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-        {error}
-      </div>
-    );
-  }
-
-  // Group marks by subject
-  const marksBySubject = marks.reduce((acc, record) => {
-    if (!acc[record.subject]) {
-      acc[record.subject] = [];
+  useEffect(() => {
+    if (student) {
+      fetchMarks();
     }
-    
-    acc[record.subject].push(record);
-    return acc;
-  }, {});
+  }, [student]);
 
-  // Calculate overall performance
-  const totalMarksObtained = marks.reduce((sum, record) => sum + record.marks, 0);
-  const totalMaxMarks = marks.reduce((sum, record) => sum + record.totalMarks, 0);
-  const overallPercentage = totalMaxMarks > 0 ? (totalMarksObtained / totalMaxMarks) * 100 : 0;
+  const fetchStudentData = async () => {
+    try {
+      const userData = getUserData();
+      const studentData = await getStudentByUserId(userData.id);
+      setStudent(studentData);
+    } catch (err) {
+      setError('Failed to fetch student data');
+      setLoading(false);
+    }
+  };
+
+  const fetchMarks = async () => {
+    try {
+      const data = await getStudentMarks(student.id);
+      setMarks(data);
+      setLoading(false);
+    } catch (err) {
+      setError('Failed to fetch marks records');
+      setLoading(false);
+    }
+  };
+
+  const calculateGrade = (obtained, total) => {
+    const percentage = (obtained / total) * 100;
+    if (percentage >= 90) return 'A+';
+    if (percentage >= 80) return 'A';
+    if (percentage >= 70) return 'B';
+    if (percentage >= 60) return 'C';
+    if (percentage >= 50) return 'D';
+    return 'F';
+  };
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Academic Performance</h1>
-      
-      <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-        <h2 className="text-xl font-semibold text-gray-700">Overall Performance</h2>
-        <p className="text-3xl font-bold text-blue-600 mt-2">{overallPercentage.toFixed(2)}%</p>
-        <p className="text-sm text-gray-500 mt-1">
-          Total Marks: {totalMarksObtained.toFixed(2)} / {totalMaxMarks.toFixed(2)}
-        </p>
-      </div>
-      
-      {Object.keys(marksBySubject).length > 0 ? (
-        <div className="space-y-8">
-          {Object.entries(marksBySubject).map(([subject, subjectMarks]) => {
-            // Calculate subject performance
-            const subjectTotal = subjectMarks.reduce((sum, record) => sum + record.marks, 0);
-            const subjectMaxTotal = subjectMarks.reduce((sum, record) => sum + record.totalMarks, 0);
-            const subjectPercentage = (subjectTotal / subjectMaxTotal) * 100;
-            
-            return (
-              <div key={subject} className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-800">{subject}</h3>
-                  <p className="text-sm text-gray-600">
-                    Overall: {subjectPercentage.toFixed(2)}% ({subjectTotal.toFixed(2)} / {subjectMaxTotal.toFixed(2)})
-                  </p>
-                </div>
-                
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Exam Type
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Marks
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Total Marks
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Percentage
-                      </th>
+    <AuthCheck requiredRole="STUDENT">
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-2xl font-bold mb-6">My Academic Performance</h1>
+
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {error}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="text-center p-8">Loading marks data...</div>
+        ) : (
+          <div className="bg-white shadow-md rounded my-6">
+            <h2 className="text-xl font-semibold p-4 border-b">Marks Records</h2>
+            {marks.length === 0 ? (
+              <p className="p-4 text-gray-500">No marks records found.</p>
+            ) : (
+              <table className="min-w-full">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-600">Course</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-600">Exam</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-600">Marks</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-600">Grade</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-600">Remarks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {marks.map((mark) => (
+                    <tr key={mark.id} className="border-b">
+                      <td className="py-3 px-4">{mark.courseName}</td>
+                      <td className="py-3 px-4">{mark.examName}</td>
+                      <td className="py-3 px-4">{mark.obtainedMarks}/{mark.totalMarks}</td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2 py-1 rounded ${
+                          calculateGrade(mark.obtainedMarks, mark.totalMarks) === 'F' 
+                            ? 'bg-red-100 text-red-800' 
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {calculateGrade(mark.obtainedMarks, mark.totalMarks)}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">{mark.remarks || '-'}</td>
                     </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {subjectMarks.map((record) => (
-                      <tr key={record.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900 capitalize">
-                            {record.examType}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{record.marks.toFixed(2)}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{record.totalMarks.toFixed(2)}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {((record.marks / record.totalMarks) * 100).toFixed(2)}%
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <p className="text-gray-500">No marks data available yet.</p>
-        </div>
-      )}
-    </div>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+      </div>
+    </AuthCheck>
   );
 }

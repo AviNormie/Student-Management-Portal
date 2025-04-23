@@ -39,6 +39,11 @@ public class AttendanceController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(attendanceService.getCourseAttendanceByDate(courseId, date));
     }
+    
+    @GetMapping("/class/{classId}")
+    public ResponseEntity<List<AttendanceResponse>> getClassAttendance(@PathVariable String classId) {
+        return ResponseEntity.ok(attendanceService.getClassAttendance(classId));
+    }
 
     @PostMapping
     public ResponseEntity<AttendanceResponse> markAttendance(@Valid @RequestBody AttendanceRequest request) {

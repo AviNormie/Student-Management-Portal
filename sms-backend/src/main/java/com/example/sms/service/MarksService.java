@@ -44,6 +44,23 @@ public class MarksService {
                 .collect(Collectors.toList());
     }
 
+    public List<MarksResponse> getCourseMarks(String courseId) {
+        // Implementation to get marks for a specific course
+        return marksRepository.findByCourseId(courseId)
+            .stream()
+            .map(this::convertToMarksResponse)
+            .collect(Collectors.toList());
+    }
+
+    public void deleteMarks(String id) {
+        // Check if marks exist
+        marksRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Marks not found with id: " + id));
+        
+        // Delete the marks
+        marksRepository.deleteById(id);
+    }
+
     public MarksResponse addMarks(MarksRequest request) {
         // Verify student exists
         Student student = studentRepository.findById(request.getStudentId())

@@ -13,7 +13,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/marks")
-@CrossOrigin(origins = "*")
 public class MarksController {
 
     @Autowired
@@ -24,18 +23,9 @@ public class MarksController {
         return ResponseEntity.ok(marksService.getStudentMarks(studentId));
     }
 
-    @GetMapping("/student/{studentId}/subject/{subject}")
-    public ResponseEntity<List<MarksResponse>> getStudentMarksBySubject(
-            @PathVariable String studentId,
-            @PathVariable String subject) {
-        return ResponseEntity.ok(marksService.getStudentMarksBySubject(studentId, subject));
-    }
-
-    @GetMapping("/student/{studentId}/exam-type/{examType}")
-    public ResponseEntity<List<MarksResponse>> getStudentMarksByExamType(
-            @PathVariable String studentId,
-            @PathVariable String examType) {
-        return ResponseEntity.ok(marksService.getStudentMarksByExamType(studentId, examType));
+    @GetMapping("/course/{courseId}")
+    public ResponseEntity<List<MarksResponse>> getCourseMarks(@PathVariable String courseId) {
+        return ResponseEntity.ok(marksService.getCourseMarks(courseId));
     }
 
     @PostMapping
@@ -44,9 +34,13 @@ public class MarksController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<MarksResponse> updateMarks(
-            @PathVariable String id,
-            @Valid @RequestBody MarksRequest request) {
+    public ResponseEntity<MarksResponse> updateMarks(@PathVariable String id, @Valid @RequestBody MarksRequest request) {
         return ResponseEntity.ok(marksService.updateMarks(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteMarks(@PathVariable String id) {
+        marksService.deleteMarks(id);
+        return ResponseEntity.noContent().build();
     }
 }
