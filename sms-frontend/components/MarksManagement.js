@@ -2,20 +2,21 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getAllCourses, getAllStudents, getStudentMarks, addMarks } from '@/lib/api';
+import { getAllStudents, getAllCourses, addMarks } from '@/lib/api';
 import { getUserData } from '@/lib/auth';
 
 export default function MarksManagement() {
-  const [courses, setCourses] = useState([]);
   const [students, setStudents] = useState([]);
-  const [selectedCourse, setSelectedCourse] = useState('');
-  const [selectedStudent, setSelectedStudent] = useState('');
-  const [marks, setMarks] = useState([]);
-  const [newMark, setNewMark] = useState({
+  const [courses, setCourses] = useState([]);
+  const [formData, setFormData] = useState({
+    studentId: '',
+    courseId: '',
+    teacherId: '',
     examName: '',
+    subject: '',  // Added missing required field
+    examType: '',  // Added missing required field
+    marks: null,   // Changed from undefined to null
     totalMarks: 100,
-    obtainedMarks: 0,
-    remarks: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -23,58 +24,52 @@ export default function MarksManagement() {
   const router = useRouter();
 
   useEffect(() => {
-    fetchCourses();
     fetchStudents();
+    fetchCourses();
+    
+    // Set teacher ID from logged in user
+    const teacher = getUserData();
+    if (teacher && teacher.id) {
+      setFormData(prev => ({
+        ...prev,
+        teacherId: teacher.id
+      }));
+    }
   }, []);
-
-  useEffect(() => {
-    if (selectedStudent) {
-      fetchStudentMarks(selectedStudent);
-    }
-  }, [selectedStudent]);
-
-  const fetchCourses = async () => {
-    try {
-      setLoading(true);
-      const data = await getAllCourses();
-      setCourses(data);
-      setLoading(false);
-    } catch (err) {
-      setError('Failed to fetch courses');
-      setLoading(false);
-    }
-  };
 
   const fetchStudents = async () => {
     try {
-      setLoading(true);
       const data = await getAllStudents();
       setStudents(data);
-      setLoading(false);
     } catch (err) {
       setError('Failed to fetch students');
-      setLoading(false);
     }
   };
 
-  const fetchStudentMarks = async (studentId) => {
+  const fetchCourses = async () => {
     try {
-      setLoading(true);
-      const data = await getStudentMarks(studentId);
-      setMarks(data);
-      setLoading(false);
+      const data = await getAllCourses();
+      setCourses(data);
     } catch (err) {
-      setError('Failed to fetch student marks');
-      setLoading(false);
+      setError('Failed to fetch courses');
     }
   };
 
-  const handleInputChange = (e) => {
+  const handleChange = (e) => {
     const { name, value } = e.target;
-    setNewMark({
-      ...newMark,
-      [name]: name === 'totalMarks' || name === 'obtainedMarks' ? parseInt(value, 10) : value
-    });
+    
+    // Convert marks to integer if it's a number field
+    if (name === 'marks' || name === 'totalMarks') {
+      setFormData({
+        ...formData,
+        [name]: value ? parseInt(value) : null
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -84,51 +79,57 @@ export default function MarksManagement() {
     setLoading(true);
 
     try {
-      const teacher = getUserData();
-      const markData = {
-        studentId: selectedStudent,
-        courseId: selectedCourse,
-        teacherId: teacher.id,
-        examName: newMark.examName,
-        totalMarks: newMark.totalMarks,
-        obtainedMarks: newMark.obtainedMarks,
-        remarks: newMark.remarks || ''
+      // Validate required fields
+      if (!formData.subject) {
+        throw new Error('Subject is required');
+      }
+      
+      if (!formData.examType) {
+        throw new Error('Exam type is required');
+      }
+      
+      if (formData.marks === null) {
+        throw new Error('Marks are required');
+      }
+      
+      // Create the marks data object
+      const marksData = {
+        studentId: formData.studentId,
+        courseId: formData.courseId,
+        teacherId: formData.teacherId,
+        examName: formData.examName,
+        subject: formData.subject,
+        examType: formData.examType,
+        marks: formData.marks,
+        totalMarks: formData.totalMarks
       };
 
-      console.log('Submitting mark data:', markData);
-      await addMarks(markData);
+      console.log('Submitting marks data:', marksData);
+      await addMarks(marksData);
+      
       setSuccess('Marks added successfully!');
-      setNewMark({
+      // Reset form
+      setFormData({
+        studentId: '',
+        courseId: '',
+        teacherId: formData.teacherId, // Keep the teacher ID
         examName: '',
-        totalMarks: 100,
-        obtainedMarks: 0,
-        remarks: ''
+        subject: '',
+        examType: '',
+        marks: null,
+        totalMarks: 100
       });
-      fetchStudentMarks(selectedStudent);
     } catch (err) {
-      console.error('Error details:', err);
+      console.error('Error details:', err.response?.data || err);
       setError(err.message || 'Failed to add marks');
     } finally {
       setLoading(false);
     }
   };
 
-  const calculatePercentage = (obtained, total) => {
-    return ((obtained / total) * 100).toFixed(2);
-  };
-
-  const getGrade = (percentage) => {
-    if (percentage >= 90) return 'A+';
-    if (percentage >= 80) return 'A';
-    if (percentage >= 70) return 'B';
-    if (percentage >= 60) return 'C';
-    if (percentage >= 50) return 'D';
-    return 'F';
-  };
-
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">Marks Management</h1>
+      <h1 className="text-2xl font-bold mb-6">Manage Student Marks</h1>
 
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -142,168 +143,154 @@ export default function MarksManagement() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Add New Marks</h2>
-          <form onSubmit={handleSubmit} className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
-            <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="student">
-                Select Student
-              </label>
-              <select
-                id="student"
-                value={selectedStudent}
-                onChange={(e) => setSelectedStudent(e.target.value)}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                required
-              >
-                <option value="">Select a student</option>
-                {students.map((student) => (
-                  <option key={student.id} value={student.id}>
-                    {student.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+      <form onSubmit={handleSubmit} className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="studentId">
+              Student*
+            </label>
+            <select
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="studentId"
+              name="studentId"
+              value={formData.studentId}
+              onChange={handleChange}
+              required
+            >
+              <option value="">Select Student</option>
+              {students.map(student => (
+                <option key={student.id} value={student.id}>
+                  {student.name} ({student.rollNumber})
+                </option>
+              ))}
+            </select>
+          </div>
 
-            <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="course">
-                Select Course
-              </label>
-              <select
-                id="course"
-                value={selectedCourse}
-                onChange={(e) => setSelectedCourse(e.target.value)}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                required
-              >
-                <option value="">Select a course</option>
-                {courses.map((course) => (
-                  <option key={course.id} value={course.id}>
-                    {course.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="courseId">
+              Course*
+            </label>
+            <select
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="courseId"
+              name="courseId"
+              value={formData.courseId}
+              onChange={handleChange}
+              required
+            >
+              <option value="">Select Course</option>
+              {courses.map(course => (
+                <option key={course.id} value={course.id}>
+                  {course.name} ({course.code})
+                </option>
+              ))}
+            </select>
+          </div>
 
-            <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="examName">
-                Exam Name
-              </label>
-              <input
-                type="text"
-                id="examName"
-                name="examName"
-                value={newMark.examName}
-                onChange={handleInputChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                placeholder="Midterm, Final, Quiz, etc."
-                required
-              />
-            </div>
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="subject">
+              Subject*
+            </label>
+            <input
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="subject"
+              name="subject"
+              type="text"
+              placeholder="Subject"
+              value={formData.subject}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-            <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="totalMarks">
-                Total Marks
-              </label>
-              <input
-                type="number"
-                id="totalMarks"
-                name="totalMarks"
-                value={newMark.totalMarks}
-                onChange={handleInputChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                min="1"
-                required
-              />
-            </div>
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="examName">
+              Exam Name*
+            </label>
+            <input
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="examName"
+              name="examName"
+              type="text"
+              placeholder="Midterm, Final, etc."
+              value={formData.examName}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-            <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="obtainedMarks">
-                Obtained Marks
-              </label>
-              <input
-                type="number"
-                id="obtainedMarks"
-                name="obtainedMarks"
-                value={newMark.obtainedMarks}
-                onChange={handleInputChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                min="0"
-                max={newMark.totalMarks}
-                required
-              />
-            </div>
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="examType">
+              Exam Type*
+            </label>
+            <select
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="examType"
+              name="examType"
+              value={formData.examType}
+              onChange={handleChange}
+              required
+            >
+              <option value="">Select Exam Type</option>
+              <option value="MIDTERM">Midterm</option>
+              <option value="FINAL">Final</option>
+              <option value="QUIZ">Quiz</option>
+              <option value="ASSIGNMENT">Assignment</option>
+            </select>
+          </div>
 
-            <div className="mb-4">
-              <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="remarks">
-                Remarks
-              </label>
-              <textarea
-                id="remarks"
-                name="remarks"
-                value={newMark.remarks}
-                onChange={handleInputChange}
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                placeholder="Optional remarks"
-                rows="3"
-              />
-            </div>
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="marks">
+              Marks Obtained*
+            </label>
+            <input
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="marks"
+              name="marks"
+              type="number"
+              min="0"
+              placeholder="Marks"
+              value={formData.marks === null ? '' : formData.marks}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-            <div className="flex items-center justify-between">
-              <button
-                type="submit"
-                disabled={loading}
-                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-              >
-                {loading ? 'Submitting...' : 'Add Marks'}
-              </button>
-            </div>
-          </form>
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="totalMarks">
+              Total Marks*
+            </label>
+            <input
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="totalMarks"
+              name="totalMarks"
+              type="number"
+              min="1"
+              placeholder="Total Marks"
+              value={formData.totalMarks}
+              onChange={handleChange}
+              required
+            />
+          </div>
         </div>
 
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Student Marks</h2>
-          {selectedStudent ? (
-            marks.length > 0 ? (
-              <div className="bg-white shadow-md rounded my-6 overflow-x-auto">
-                <table className="min-w-full">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="text-left py-3 px-4 font-semibold text-gray-600">Course</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-600">Exam</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-600">Marks</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-600">Percentage</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-600">Grade</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-600">Remarks</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {marks.map((mark, index) => {
-                      const percentage = calculatePercentage(mark.obtainedMarks, mark.totalMarks);
-                      const grade = getGrade(percentage);
-                      return (
-                        <tr key={index} className="border-b">
-                          <td className="py-3 px-4">{mark.courseName || 'N/A'}</td>
-                          <td className="py-3 px-4">{mark.examName}</td>
-                          <td className="py-3 px-4">{mark.obtainedMarks} / {mark.totalMarks}</td>
-                          <td className="py-3 px-4">{percentage}%</td>
-                          <td className="py-3 px-4">{grade}</td>
-                          <td className="py-3 px-4">{mark.remarks || '-'}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="bg-gray-100 p-4 rounded">No marks found for this student.</div>
-            )
-          ) : (
-            <div className="bg-gray-100 p-4 rounded">Select a student to view their marks.</div>
-          )}
+        <div className="flex items-center justify-between mt-6">
+          <button
+            type="button"
+            onClick={() => router.push('/teacher/dashboard')}
+            className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+          >
+            {loading ? 'Saving...' : 'Add Marks'}
+          </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }
