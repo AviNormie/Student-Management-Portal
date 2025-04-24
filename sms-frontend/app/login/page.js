@@ -22,6 +22,15 @@ export default function Login() {
       const userData = await loginUser(username, password, role);
       console.log('Login successful, userData:', userData);
       
+      // Check if userData is valid (not HTML)
+      if (typeof userData === 'string' && userData.includes('<!DOCTYPE html>')) {
+        throw new Error('Received HTML instead of user data. Server might be returning an error page.');
+      }
+      
+      if (!userData || !userData.role) {
+        throw new Error('Invalid user data received from server');
+      }
+      
       // Save user data first
       saveUserData(userData);
       

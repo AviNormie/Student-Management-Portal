@@ -2,7 +2,7 @@ import './globals.css';
 import NavBar from '@/components/NavBar';
 
 export const metadata = {
-  title: 'Student Management System',
+  title: 'Student Management Portal',
   description: 'A simple student management system',
 };
 
