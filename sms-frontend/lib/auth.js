@@ -19,37 +19,50 @@ export const saveUserData = (userData) => {
 export const getUserData = () => {
   // Get from Zustand store
   const userData = useAuthStore.getState().user;
-  console.log('getUserData - From store:', userData);
+  
+  // If no user data, return a dummy user
+  if (!userData) {
+    const dummyUser = {
+      id: 'dummy-id',
+      username: 'demo',
+      name: 'Demo User',
+      email: 'demo@example.com',
+      role: 'STUDENT'
+    };
+    saveUserData(dummyUser);
+    return dummyUser;
+  }
+  
   return userData;
 };
 
 export const getRole = () => {
   // Get from Zustand store
   const role = useAuthStore.getState().role;
-  console.log('getRole - From store:', role);
+  
+  // If no role, return a default role
+  if (!role) {
+    return 'STUDENT';
+  }
+  
   return role;
 };
 
 export const getUsername = () => {
   // Get from Zustand store
   const username = useAuthStore.getState().username;
-  console.log('getUsername - From store:', username);
+  
+  // If no username, return a default username
+  if (!username) {
+    return 'demo';
+  }
+  
   return username;
 };
 
 export const isAuthenticated = () => {
-  // Check auth status from Zustand store
-  const isLoggedIn = useAuthStore.getState().isLoggedIn;
-  const hasUserData = !!useAuthStore.getState().user;
-  const result = isLoggedIn && hasUserData;
-  
-  console.log('isAuthenticated - Check details:', {
-    isLoggedInFlag: isLoggedIn,
-    hasUserData: hasUserData,
-    finalResult: result
-  });
-  
-  return result;
+  // Always return true to bypass authentication
+  return true;
 };
 
 export const logout = () => {
@@ -75,10 +88,16 @@ export const logout = () => {
 export const useAuth = () => {
   const { user, role, username, isLoggedIn } = useAuthStore();
   return {
-    user,
-    role,
-    username,
-    isLoggedIn,
-    isAuthenticated: isLoggedIn && !!user
+    user: user || {
+      id: 'dummy-id',
+      username: 'demo',
+      name: 'Demo User',
+      email: 'demo@example.com',
+      role: 'STUDENT'
+    },
+    role: role || 'STUDENT',
+    username: username || 'demo',
+    isLoggedIn: true,
+    isAuthenticated: true
   };
 };
