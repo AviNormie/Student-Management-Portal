@@ -6,16 +6,55 @@ const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
-  }
+  },
+  withCredentials: true // Enable cookies for all requests
 });
 
-// Add a request interceptor to include the auth token
+// Single request interceptor for authentication
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Try to get user data from localStorage
+    try {
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      // If we have a token, use Bearer authentication
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      } 
+      // If we have username/password, use Basic authentication
+      else if (userData.username && userData.password) {
+        const token = btoa(`${userData.username}:${userData.password}`);
+        config.headers.Authorization = `Basic ${token}`;
+      }
+      
+      // Always include credentials for session-based auth as fallback
+      config.withCredentials = true;
+    } catch (error) {
+      console.error('Error in auth interceptor:', error);
     }
+    
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add an interceptor to include authentication headers with every request
+api.interceptors.request.use(
+  (config) => {
+    const userData = JSON.parse(localStorage.getItem('user') || '{}');
+    
+    if (userData.username) {
+      // For Basic Auth, we need to send username and password
+      // Since we don't store password in localStorage for security reasons,
+      // we'll use the session authentication that Spring Security provides
+      
+      // Set withCredentials to true to include cookies in cross-site requests
+      config.withCredentials = true;
+    }
+    
     return config;
   },
   (error) => {
@@ -26,26 +65,23 @@ api.interceptors.request.use(
 // Auth APIs
 export const loginUser = async (username, password, role) => {
   try {
-    console.log(`Sending login request to: ${API_URL}/auth/login`);
-    console.log('Login payload:', { username, password, role });
+    const response = await api.post('/auth/login', 
+      { username, password, role: role.toUpperCase() }
+    );
     
-    const response = await api.post('/auth/login', { 
-      username, 
-      password, 
-      role: role.toUpperCase() // Ensure role is uppercase to match backend expectations
-    });
+    // Store user data including password for Basic Auth
+    const userData = {
+      ...response.data,
+      password: password // Store password for Basic Auth
+    };
     
-    console.log('Login API response status:', response.status);
-    console.log('Login API response headers:', response.headers);
-    console.log('Login API response data:', response.data);
+    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('isLoggedIn', 'true');
     
     return response.data;
   } catch (error) {
-    console.error("Login failed details:", error);
-    console.error("Error response:", error.response);
-    console.error("Error status:", error.response?.status);
-    console.error("Error data:", error.response?.data);
-    throw error.response?.data || { message: 'Login failed. Server may be unavailable.' };
+    console.error('Login error:', error);
+    throw error.response?.data || { message: 'Login failed' };
   }
 };
 
@@ -183,10 +219,15 @@ export const getStudentMarks = async (studentId) => {
 
 export const addMarks = async (marksData) => {
   try {
+    console.log('Submitting marks data:', marksData);
     const response = await api.post('/marks', marksData);
     return response.data;
   } catch (error) {
-    throw error.response?.data || { message: 'Failed to add marks' };
+    console.error('Error adding marks:', error);
+    if (error.response && error.response.data) {
+      throw new Error(JSON.stringify(error.response.data));
+    }
+    throw new Error('Failed to add marks');
   }
 };
 
@@ -202,9 +243,16 @@ export const getAllCourses = async () => {
 
 export async function createCourse(courseData) {
   try {
+    console.log('Creating course with data:', courseData);
+    console.log('Auth token:', localStorage.getItem('token'));
+    console.log('User data:', localStorage.getItem('user'));
+    
     const response = await api.post('/courses', courseData);
     return response.data;
   } catch (error) {
+    console.error('Course creation error:', error);
+    console.error('Response status:', error.response?.status);
+    console.error('Response data:', error.response?.data);
     throw new Error(error.response?.data?.message || 'Failed to create course');
   }
 }

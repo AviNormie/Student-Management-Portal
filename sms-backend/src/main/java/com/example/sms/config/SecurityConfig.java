@@ -38,17 +38,20 @@ public class SecurityConfig {
                 .requestMatchers("/api/students/**").hasAnyAuthority("TEACHER", "ADMIN")
                 .requestMatchers("/api/courses/**").hasAnyAuthority("TEACHER", "ADMIN")
                 .requestMatchers("/api/attendance/**").hasAnyAuthority("TEACHER", "ADMIN")
+                .requestMatchers("/api/teachers/**").hasAuthority("ADMIN")
                 .anyRequest().authenticated()
             )
-            // Remove form login configuration
+            // Basic authentication instead of token-based
+            .httpBasic(httpBasic -> {})
+            // Disable form login
             .formLogin(form -> form.disable())
-            // Remove logout configuration or customize it
+            // Disable logout configuration
             .logout(logout -> logout.disable());
 
         return http.build();
     }
 
-    // Add this bean for CORS configuration
+    // CORS configuration
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
